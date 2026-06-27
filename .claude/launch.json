@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "workshop-manager",
+      "runtimeExecutable": "/usr/bin/python3",
+      "runtimeArgs": ["/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/serve.py"],
+      "port": 3456
+    }
+  ]
+}

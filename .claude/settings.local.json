@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/.claude\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx --version)",
+      "Read(//usr/local/bin/**)",
+      "Read(//opt/homebrew/**)",
+      "Read(//usr/bin/**)",
+      "Read(//Users/nafizfaizal/Library/**)",
+      "Bash(python3 -c ' *)",
+      "Bash(pip install *)",
+      "Bash(pip3 install *)",
+      "Bash(python3 -m py_compile '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/main.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/settings.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/users.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/auth.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/jobs.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/reports.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/fixed_costs.py')",
+      "Bash(python3 -m py_compile '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/customers.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/vehicles.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/staff.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/invoices.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/expenses.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/inventory.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/suppliers.py' '/Users/nafizfaizal/Documents/Claude/Projects/Spec R Invoice/workshop-management-app/backend/app/routers/purchase_bills.py')"
+    ]
+  }
+}
