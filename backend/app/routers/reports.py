@@ -137,14 +137,6 @@ async def dashboard(
     unpaid_invoices_count = unpaid_row[1]
 
     # Supplier due amount (unpaid bills)
-    sup_due_result = await db.execute(
-        select(func.coalesce(func.sum(
-            select(func.sum(
-                # We'll compute this differently using a subquery join
-            ))
-        ), 0))
-    )
-    # Simplified: sum amounts via bill items
     from sqlalchemy import text
     sup_amount_result = await db.execute(
         text("""
