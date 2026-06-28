@@ -1,6 +1,8 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 from .database import engine, Base
 from .routers import (
     auth,
@@ -18,6 +20,8 @@ from .routers import (
     settings,
     users,
 )
+
+STATIC_DIR = Path(__file__).parent.parent / "static"
 
 
 @asynccontextmanager
@@ -59,3 +63,11 @@ app.include_router(users.router, prefix=API_PREFIX)
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+
+@app.get("/", response_class=HTMLResponse)
+async def serve_frontend():
+    index = STATIC_DIR / "index.html"
+    if index.exists():
+        return HTMLResponse(content=index.read_text(encoding="utf-8"))
+    return HTMLResponse(content="<h1>App loading...</h1>")
