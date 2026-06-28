@@ -65,6 +65,19 @@ async def health_check():
     return {"status": "ok"}
 
 
+@app.post("/internal/reset-db-specr2026")
+async def reset_db():
+    from sqlalchemy import text
+    async with engine.begin() as conn:
+        await conn.execute(text("""
+            TRUNCATE TABLE purchase_bill_items, purchase_bills,
+            job_parts, job_services, jobs, invoices, expenses,
+            inventory, vehicles, customers, staff, suppliers,
+            fixed_costs, app_settings, users RESTART IDENTITY CASCADE
+        """))
+    return {"status": "cleared"}
+
+
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
     index = STATIC_DIR / "index.html"
