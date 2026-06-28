@@ -2,6 +2,7 @@ from typing import List, Optional
 from datetime import date
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -100,9 +101,13 @@ async def create_invoice(
     return result.scalar_one()
 
 
+class MarkPaidRequest(BaseModel):
+    payment_method: Optional[str] = None
+
 @router.put("/invoices/{invoice_id}/mark-paid", response_model=InvoiceResponse)
 async def mark_invoice_paid(
     invoice_id: str,
+    body: MarkPaidRequest = MarkPaidRequest(),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -111,6 +116,8 @@ async def mark_invoice_paid(
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
     invoice.paid = True
+    invoice.payment_method = body.payment_method
+    invoice.date_paid = date.today()
     await db.commit()
     result = await db.execute(
         select(Invoice).options(*_invoice_options()).where(Invoice.id == invoice_id)

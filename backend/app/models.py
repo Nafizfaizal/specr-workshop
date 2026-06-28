@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime, date
 from decimal import Decimal
+from typing import Optional
 from sqlalchemy import (
     String, Boolean, Integer, Numeric, Date, DateTime, ForeignKey, Text, Enum as SAEnum
 )
@@ -156,6 +157,8 @@ class Invoice(Base):
     date_issued: Mapped[date] = mapped_column(Date, nullable=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     paid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    payment_method: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    date_paid: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     job: Mapped["Job"] = relationship("Job", back_populates="invoice")

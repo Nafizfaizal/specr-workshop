@@ -235,6 +235,8 @@ class InvoiceBase(BaseModel):
     date_issued: date
     subtotal: Decimal
     paid: bool = False
+    payment_method: Optional[str] = None
+    date_paid: Optional[date] = None
 
 
 class InvoiceCreate(BaseModel):
