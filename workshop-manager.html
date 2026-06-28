@@ -978,8 +978,8 @@ async function deleteJob(id) { if(!confirm('Delete job?')) return; await api('DE
 function showNewJobModal(prefill) {
   svcCnt=0; prtCnt=0;
   const job=prefill||{}; const isEdit=!!job.id;
-  const custOpts=db.customers.map(c=>`<option value="${c.id}" ${job.customerId===c.id?'selected':''}>${c.name}</option>`).join('');
-  const vehOpts=db.vehicles.map(v=>{const c=db.customers.find(x=>x.id===v.customerId)||{};return`<option value="${v.id}" data-cid="${v.customerId}" ${job.vehicleId===v.id?'selected':''}>${v.make} ${v.model} (${v.plate}) — ${c.name}</option>`;}).join('');
+  const custOpts=`<option value="">— Select Customer —</option>`+db.customers.map(c=>`<option value="${c.id}" ${job.customerId===c.id?'selected':''}>${c.name}</option>`).join('');
+  const vehOpts=`<option value="">— Select Vehicle —</option>`+db.vehicles.filter(v=>!job.customerId||v.customerId===job.customerId).map(v=>{const c=db.customers.find(x=>x.id===v.customerId)||{};return`<option value="${v.id}" data-cid="${v.customerId}" ${job.vehicleId===v.id?'selected':''}>${v.make} ${v.model} (${v.plate})</option>`;}).join('');
   const staffOpts=db.staff.map(s=>`<option value="${s.id}" ${job.staffId===s.id?'selected':''}>${s.name} — ${s.role}</option>`).join('');
   const statusOpts=['pending','inprogress','waitingparts','qc','ready','delivered','completed'].map(s=>`<option value="${s}" ${(job.status||'pending')===s?'selected':''}>${jobStatusLabel(s)}</option>`).join('');
   const svcHTML=(job.services||[{desc:'',rate:0}]).map((s,i)=>svcLineHTML(i,s)).join('');
@@ -987,7 +987,10 @@ function showNewJobModal(prefill) {
 
   showModal(`${isEdit?'Edit':'New'} Job Card`, `
     <div class="form-row cols-2">
-      <div class="form-group"><label>Customer *</label><select id="j-cust" onchange="filterVehByCust()">${custOpts}<option value="">— Select —</option></select></div>
+      <div class="form-group">
+        <label style="display:flex;justify-content:space-between;align-items:center">Customer * <button type="button" onclick="showQuickCustomerFromJob()" style="background:none;border:none;color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;padding:0">+ New Customer</button></label>
+        <select id="j-cust" onchange="filterVehByCust()">${custOpts}</select>
+      </div>
       <div class="form-group"><label>Vehicle *</label><select id="j-veh">${vehOpts}<option value="">— Select —</option></select></div>
     </div>
     <div class="form-row cols-2" style="margin-bottom:12px">
@@ -1963,20 +1966,36 @@ function renderCustomerRows(custs) {
   </tr>`).join('');
 }
 function filterCustomers(){ const q=document.getElementById('cust-search').value.toLowerCase(); document.getElementById('cust-tbody').innerHTML=renderCustomerRows(db.customers.filter(c=>c.name.toLowerCase().includes(q)||(c.phone||'').includes(q))); }
-function showCustomerModal(existing){
-  const c=existing||{};
-  showModal(c.id?'Edit Customer':'Add Customer',`
+function validateCustomerFields(nameId, phoneId, emailId) {
+  const name = document.getElementById(nameId).value.trim();
+  if (!name) { showToast('Name is required', true); return false; }
+  const phone = document.getElementById(phoneId).value.trim();
+  if (phone) {
+    const digits = phone.replace(/[\s\-\+\(\)]/g, '');
+    if (!/^\d{7,15}$/.test(digits)) { showToast('Phone must be 7–15 digits', true); return false; }
+  }
+  const email = document.getElementById(emailId).value.trim();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Invalid email address', true); return false; }
+  return true;
+}
+
+function customerFormHTML(c) {
+  return `
     <div class="form-group" style="margin-bottom:12px"><label>Full Name *</label><input type="text" id="c-name" value="${c.name||''}" placeholder="Customer name"></div>
     <div class="form-row cols-2">
-      <div class="form-group"><label>Phone</label><input type="text" id="c-phone" value="${c.phone||''}" placeholder="+971 50 XXX XXXX"></div>
+      <div class="form-group"><label>Phone <small style="color:var(--text-muted);font-weight:400">(7–15 digits)</small></label><input type="text" id="c-phone" value="${c.phone||''}" placeholder="+971 50 XXX XXXX" maxlength="20"></div>
       <div class="form-group"><label>Email</label><input type="email" id="c-email" value="${c.email||''}" placeholder="email@example.com"></div>
     </div>
     <div class="form-group" style="margin-bottom:12px"><label>Address</label><input type="text" id="c-addr" value="${c.address||''}" placeholder="Area, City"></div>
-    <div class="form-group"><label>Notes (VIP status, preferences, language, etc.)</label><textarea id="c-notes" placeholder="e.g. VIP customer, always asks for Mohammed, prefers WhatsApp updates..." style="min-height:70px">${c.notes||''}</textarea></div>`,
+    <div class="form-group"><label>Notes</label><textarea id="c-notes" placeholder="e.g. VIP customer, always asks for Mohammed, prefers WhatsApp..." style="min-height:70px">${c.notes||''}</textarea></div>`;
+}
+
+function showCustomerModal(existing){
+  const c=existing||{};
+  showModal(c.id?'Edit Customer':'Add Customer', customerFormHTML(c),
   async ()=>{
-    const name=document.getElementById('c-name').value.trim();
-    if(!name){ alert('Name required'); return; }
-    const cust={name,phone:document.getElementById('c-phone').value,email:document.getElementById('c-email').value,address:document.getElementById('c-addr').value,notes:document.getElementById('c-notes').value};
+    if (!validateCustomerFields('c-name','c-phone','c-email')) return;
+    const cust={name:document.getElementById('c-name').value.trim(),phone:document.getElementById('c-phone').value.trim(),email:document.getElementById('c-email').value.trim(),address:document.getElementById('c-addr').value.trim(),notes:document.getElementById('c-notes').value};
     try {
       if(c.id) await api('PUT', '/customers/' + c.id, cust);
       else await api('POST', '/customers', cust);
@@ -1984,6 +2003,31 @@ function showCustomerModal(existing){
     } catch(err) {}
   },c.id?'Update':'Add Customer');
 }
+
+function showQuickCustomerFromJob(){
+  showModalOverlay('New Customer', customerFormHTML({}),
+  async ()=>{
+    if (!validateCustomerFields('c-name','c-phone','c-email')) return;
+    const cust={name:document.getElementById('c-name').value.trim(),phone:document.getElementById('c-phone').value.trim(),email:document.getElementById('c-email').value.trim(),address:document.getElementById('c-addr').value.trim(),notes:document.getElementById('c-notes').value};
+    try {
+      const created = await api('POST', '/customers', cust);
+      await refreshDB();
+      closeModalOverlay();
+      // Job modal is still open — inject the new customer into the dropdown and select it
+      const custSel = document.getElementById('j-cust');
+      if (custSel) {
+        const newOpt = document.createElement('option');
+        newOpt.value = created.id;
+        newOpt.textContent = created.name;
+        custSel.appendChild(newOpt);
+        custSel.value = created.id;
+        filterVehByCust();
+        showToast(`Customer "${created.name}" created`);
+      }
+    } catch(err) {}
+  },'Add Customer');
+}
+
 async function deleteCustomer(id){if(!confirm('Delete customer?'))return; await api('DELETE', '/customers/' + id); await refreshDB(); renderCustomers();}
 
 // ─── VEHICLES ─────────────────────────────────────────────────────────────────
