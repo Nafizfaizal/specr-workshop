@@ -476,7 +476,7 @@ async def job_duration_report(
     dept_result = await db.execute(
         text("""
             SELECT department,
-                   AVG(EXTRACT(EPOCH FROM (completed_at - date_in)) / 86400) as avg_days,
+                   AVG((completed_at - date_in)) as avg_days,
                    COUNT(*) as job_count
             FROM jobs
             WHERE completed_at IS NOT NULL AND date_in IS NOT NULL AND department IS NOT NULL
@@ -492,7 +492,7 @@ async def job_duration_report(
     tech_result = await db.execute(
         text("""
             SELECT s.name,
-                   AVG(EXTRACT(EPOCH FROM (j.completed_at - j.date_in)) / 86400) as avg_days,
+                   AVG((j.completed_at - j.date_in)) as avg_days,
                    COUNT(j.id) as job_count
             FROM jobs j
             JOIN staff s ON s.id = j.staff_id
