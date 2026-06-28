@@ -73,5 +73,8 @@ async def health_check():
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
-    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-    return HTMLResponse(content=html)
+    try:
+        html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+        return HTMLResponse(content=html)
+    except Exception as e:
+        return HTMLResponse(content=f"<h1>Error: {e}</h1><p>STATIC_DIR={STATIC_DIR}</p><p>exists={STATIC_DIR.exists()}</p>")
