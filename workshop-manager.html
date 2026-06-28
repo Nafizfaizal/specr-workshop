@@ -314,6 +314,111 @@
     .no-print { display: none !important; }
   }
   #print-area { display: none; }
+
+  /* ─── HAMBURGER BUTTON ─────────────────────────────────────────── */
+  .hamburger {
+    display: none; background: none; border: none; cursor: pointer;
+    flex-direction: column; gap: 5px; padding: 4px; margin-right: 6px;
+  }
+  .hamburger span {
+    display: block; width: 22px; height: 2px; background: var(--text);
+    border-radius: 2px; transition: all .25s;
+  }
+  #sidebar-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    z-index: 999;
+  }
+  #sidebar-overlay.active { display: block; }
+
+  /* ─── TABLET (≤1024px) ─────────────────────────────────────────── */
+  @media (max-width: 1024px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .dept-grid  { grid-template-columns: repeat(3, 1fr); }
+    .staff-grid { grid-template-columns: repeat(2, 1fr); }
+    .grid-3     { grid-template-columns: 1fr 1fr; }
+    #content    { padding: 16px; }
+  }
+
+  /* ─── MOBILE (≤768px) — sidebar slides in ─────────────────────── */
+  @media (max-width: 768px) {
+    body { overflow: hidden; }
+
+    /* Sidebar becomes a slide-over drawer */
+    #sidebar {
+      position: fixed; top: 0; left: 0; bottom: 0;
+      width: 240px; z-index: 1000;
+      transform: translateX(-100%);
+      transition: transform .25s ease;
+    }
+    #sidebar.open { transform: translateX(0); }
+
+    /* Main fills whole screen */
+    #main { width: 100%; }
+
+    /* Show hamburger, hide date badge */
+    .hamburger { display: flex; }
+    .date-badge { display: none; }
+
+    /* Topbar compact */
+    .topbar { padding: 0 14px; }
+    .topbar-brand { display: none; }
+    .topbar-sep   { display: none; }
+
+    /* Content padding */
+    #content { padding: 12px; }
+
+    /* All grids → single column */
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .dept-grid  { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .staff-grid { grid-template-columns: 1fr; }
+    .grid-2     { grid-template-columns: 1fr; }
+    .grid-3     { grid-template-columns: 1fr; }
+
+    /* Form rows → single column */
+    .form-row.cols-2,
+    .form-row.cols-3 { grid-template-columns: 1fr; }
+
+    /* Parts line — compact */
+    .parts-line { grid-template-columns: 2fr 1fr 1fr 26px; }
+    .parts-line .parts-total-col { display: none; }
+
+    /* Modals — full screen on mobile */
+    .modal-backdrop { padding: 0; align-items: flex-end; }
+    .modal, .modal-lg, .modal-xl {
+      max-width: 100%; width: 100%; border-radius: 18px 18px 0 0;
+      max-height: 92vh;
+    }
+
+    /* Hide less-important table columns */
+    .hide-mobile { display: none !important; }
+
+    /* User chip — icon only */
+    .user-name, .user-role-badge { display: none; }
+    .user-chip { padding: 5px; border-radius: 50%; }
+
+    /* Logout text hidden */
+    #logout-btn-text { display: none; }
+
+    /* Section filters wrap */
+    .section-filters { gap: 8px; }
+    .filter-input { font-size: 12px; padding: 6px 9px; }
+
+    /* Stat cards smaller text */
+    .stat-value { font-size: 17px; }
+    .dept-card-val { font-size: 15px; }
+  }
+
+  /* ─── SMALL MOBILE (≤480px) ─────────────────────────────────────── */
+  @media (max-width: 480px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .dept-grid  { grid-template-columns: 1fr 1fr; }
+    .topbar { height: 50px; }
+    #content { padding: 10px; }
+    .btn { padding: 7px 12px; font-size: 12px; }
+    .card-body { padding: 12px; }
+    .modal-body { padding: 14px; }
+    .modal-header, .modal-footer { padding: 12px 14px; }
+  }
 </style>
 </head>
 <body>
@@ -376,9 +481,14 @@
   </nav>
 </div>
 
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
 <div id="main">
   <div class="topbar">
     <div class="topbar-left">
+      <button class="hamburger" id="hamburger-btn" onclick="toggleSidebar()" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
       <div class="topbar-title" id="page-title">Dashboard</div>
     </div>
     <div class="topbar-right">
@@ -391,7 +501,7 @@
           <div class="user-role-badge" id="user-role-display">—</div>
         </div>
       </div>
-      <button class="btn btn-secondary btn-sm" onclick="doLogout()" title="Sign out" style="padding:6px 10px">⎋ Logout</button>
+      <button class="btn btn-secondary btn-sm" onclick="doLogout()" title="Sign out" style="padding:6px 10px">⎋ <span id="logout-btn-text">Logout</span></button>
     </div>
   </div>
   <div id="content"></div>
@@ -454,7 +564,15 @@ async function doLogin() {
   const errEl = document.getElementById('login-error');
   if (!username || !password) { errEl.textContent = 'Enter username and password.'; errEl.style.display = 'block'; return; }
   try {
-    const data = await api('POST', '/auth/login', { username, password });
+    const formBody = new URLSearchParams({ username, password });
+    const loginResp = await fetch(`${API_BASE}/auth/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formBody.toString()
+    });
+    if (!loginResp.ok) { errEl.textContent = 'Invalid username or password.'; errEl.style.display = 'block'; return; }
+    const raw = await loginResp.json();
+    const data = toCamel(raw);
     if (!data) return;
     setToken(data.accessToken);
     sessionStorage.setItem('specr_session', JSON.stringify(data.user));
@@ -569,12 +687,24 @@ let currentPage = 'dashboard';
 const pageTitles = { dashboard:'Dashboard', jobs:'Job Cards', invoices:'Invoices', expenses:'Expenses', profitability:'Profitability', taxexport:'Tax Export', customers:'Customers', vehicles:'Vehicles', staff:'Staff', users:'User Accounts', profile:'My Profile', inventory:'Parts Inventory', suppliers:'Suppliers', purchasebills:'Purchase Bills', supplierledger:'Supplier Payments', inventoryreport:'Inventory Report', jobduration:'Job Duration', fixedcosts:'Fixed Costs & Alerts' };
 const topbarLabels = { dashboard:'+ New Job', jobs:'+ New Job', invoices:'+ Invoice', expenses:'+ Add Expense', profitability:'', taxexport:'', customers:'+ Add Customer', vehicles:'+ Add Vehicle', staff:'+ Add Staff', users:'', profile:'', inventory:'+ Add Part', suppliers:'+ Add Supplier', purchasebills:'+ New Purchase Bill', supplierledger:'', inventoryreport:'', jobduration:'', fixedcosts:'+ Add Fixed Cost' };
 
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('active');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('active');
+}
+
 document.querySelectorAll('.nav-item').forEach(el => {
   el.addEventListener('click', async () => {
     document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
     el.classList.add('active');
     currentPage = el.dataset.page;
     document.getElementById('page-title').textContent = pageTitles[currentPage];
+    closeSidebar();
     const btn = document.getElementById('topbar-action');
     const lbl = topbarLabels[currentPage];
     btn.textContent = lbl || '';
