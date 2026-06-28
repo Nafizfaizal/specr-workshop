@@ -6,6 +6,7 @@ from fastapi.responses import Response, HTMLResponse
 from .database import engine, Base
 
 STATIC_DIR = Path(__file__).parent.parent / "static"
+_index_html: str = ""
 from .routers import (
     auth,
     customers,
@@ -26,9 +27,12 @@ from .routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create all tables on startup
+    global _index_html
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    index_path = STATIC_DIR / "index.html"
+    if index_path.exists():
+        _index_html = index_path.read_text(encoding="utf-8")
     yield
     await engine.dispose()
 
@@ -73,8 +77,6 @@ async def health_check():
 
 @app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
-    try:
-        html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
-        return HTMLResponse(content=html)
-    except Exception as e:
-        return HTMLResponse(content=f"<h1>Error: {e}</h1><p>STATIC_DIR={STATIC_DIR}</p><p>exists={STATIC_DIR.exists()}</p>")
+    if not _index_html:
+        return HTMLResponse(content=f"<h1>Frontend not found</h1><p>STATIC_DIR={STATIC_DIR}, exists={STATIC_DIR.exists()}</p>")
+    return HTMLResponse(content=_index_html)
