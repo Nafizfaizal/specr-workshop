@@ -38,6 +38,7 @@ class Customer(Base):
     phone: Mapped[str] = mapped_column(String(50), nullable=True)
     email: Mapped[str] = mapped_column(String(200), nullable=True)
     address: Mapped[str] = mapped_column(Text, nullable=True)
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
     vehicles: Mapped[list["Vehicle"]] = relationship("Vehicle", back_populates="customer")

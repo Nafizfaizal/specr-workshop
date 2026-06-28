@@ -1966,20 +1966,58 @@ function renderCustomerRows(custs) {
   </tr>`).join('');
 }
 function filterCustomers(){ const q=document.getElementById('cust-search').value.toLowerCase(); document.getElementById('cust-tbody').innerHTML=renderCustomerRows(db.customers.filter(c=>c.name.toLowerCase().includes(q)||(c.phone||'').includes(q))); }
-function validateCustomerFields(nameId, phoneId, emailId) {
-  const name = document.getElementById(nameId).value.trim();
+function validateCustomerFields() {
+  const name = document.getElementById('c-name').value.trim();
   if (!name) { showToast('Name is required', true); return false; }
-  const phone = document.getElementById(phoneId).value.trim();
+  const phone = document.getElementById('c-phone').value.trim();
   if (phone) {
     const digits = phone.replace(/[\s\-\+\(\)]/g, '');
     if (!/^\d{7,15}$/.test(digits)) { showToast('Phone must be 7–15 digits', true); return false; }
   }
-  const email = document.getElementById(emailId).value.trim();
+  const email = document.getElementById('c-email').value.trim();
   if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('Invalid email address', true); return false; }
   return true;
 }
 
-function customerFormHTML(c) {
+let _custVehicles = []; // working list of vehicles in the customer modal
+
+function custVehLineHTML(idx, v={}) {
+  return `<div class="cust-veh-row" id="cvrow-${idx}" style="display:grid;grid-template-columns:1fr 1fr 70px 100px 1fr 26px;gap:6px;align-items:center;margin-bottom:6px">
+    <input placeholder="Make" value="${v.make||''}" id="cv-make-${idx}" style="padding:7px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12.5px;font-family:inherit">
+    <input placeholder="Model" value="${v.model||''}" id="cv-model-${idx}" style="padding:7px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12.5px;font-family:inherit">
+    <input placeholder="Year" value="${v.year||''}" id="cv-year-${idx}" type="number" min="1950" max="2030" style="padding:7px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12.5px;font-family:inherit">
+    <input placeholder="Plate" value="${v.plate||''}" id="cv-plate-${idx}" style="padding:7px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12.5px;font-family:inherit;text-transform:uppercase">
+    <input placeholder="VIN (optional)" value="${v.vin||''}" id="cv-vin-${idx}" style="padding:7px 9px;border:1.5px solid var(--border);border-radius:6px;font-size:12.5px;font-family:inherit">
+    <button type="button" onclick="removeCustVeh(${idx})" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:18px;padding:0;line-height:1" title="Remove">✕</button>
+  </div>`;
+}
+
+function addCustVeh() {
+  const idx = Date.now();
+  _custVehicles.push({_idx: idx});
+  const wrap = document.getElementById('cust-veh-list');
+  wrap.insertAdjacentHTML('beforeend', custVehLineHTML(idx));
+}
+
+function removeCustVeh(idx) {
+  _custVehicles = _custVehicles.filter(v => v._idx !== idx);
+  document.getElementById(`cvrow-${idx}`)?.remove();
+}
+
+function readCustVehRows() {
+  return _custVehicles.map(v => {
+    const make = document.getElementById(`cv-make-${v._idx}`)?.value.trim()||'';
+    const model = document.getElementById(`cv-model-${v._idx}`)?.value.trim()||'';
+    const year = parseInt(document.getElementById(`cv-year-${v._idx}`)?.value)||null;
+    const plate = document.getElementById(`cv-plate-${v._idx}`)?.value.trim()||'';
+    const vin = document.getElementById(`cv-vin-${v._idx}`)?.value.trim()||'';
+    return {_idx: v._idx, id: v.id, make, model, year, plate, vin};
+  }).filter(v => v.make || v.model || v.plate);
+}
+
+function customerFormHTML(c, existingVehicles=[]) {
+  _custVehicles = existingVehicles.map((v,i) => ({...v, _idx: v.id||i}));
+  const vehRows = _custVehicles.map((v,i) => custVehLineHTML(v._idx, v)).join('');
   return `
     <div class="form-group" style="margin-bottom:12px"><label>Full Name *</label><input type="text" id="c-name" value="${c.name||''}" placeholder="Customer name"></div>
     <div class="form-row cols-2">
@@ -1987,33 +2025,61 @@ function customerFormHTML(c) {
       <div class="form-group"><label>Email</label><input type="email" id="c-email" value="${c.email||''}" placeholder="email@example.com"></div>
     </div>
     <div class="form-group" style="margin-bottom:12px"><label>Address</label><input type="text" id="c-addr" value="${c.address||''}" placeholder="Area, City"></div>
-    <div class="form-group"><label>Notes</label><textarea id="c-notes" placeholder="e.g. VIP customer, always asks for Mohammed, prefers WhatsApp..." style="min-height:70px">${c.notes||''}</textarea></div>`;
+    <div class="form-group" style="margin-bottom:16px"><label>Notes</label><textarea id="c-notes" placeholder="VIP, language preference, WhatsApp only, etc." style="min-height:60px">${c.notes||''}</textarea></div>
+    <div style="border-top:1px solid var(--border);padding-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">🚗 Vehicles</span>
+        <button type="button" onclick="addCustVeh()" class="btn btn-secondary btn-sm">+ Add Vehicle</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 70px 100px 1fr 26px;gap:6px;margin-bottom:4px;padding:0 2px">
+        ${['Make','Model','Year','Plate','VIN',''].map(h=>`<span style="font-size:10px;font-weight:700;color:var(--text-muted);text-transform:uppercase">${h}</span>`).join('')}
+      </div>
+      <div id="cust-veh-list">${vehRows}</div>
+      ${_custVehicles.length===0?'<div style="font-size:12px;color:var(--text-muted);padding:6px 2px">No vehicles yet — click + Add Vehicle</div>':''}
+    </div>`;
+}
+
+async function saveCustomerWithVehicles(customerId, isNew) {
+  const vehicles = readCustVehRows();
+  const existingIds = new Set(_custVehicles.filter(v=>v.id).map(v=>v.id));
+  for (const v of vehicles) {
+    const payload = {customer_id: customerId, make: v.make, model: v.model, year: v.year||null, plate: v.plate, vin: v.vin||null};
+    if (v.id) {
+      await api('PUT', '/vehicles/' + v.id, payload);
+    } else {
+      await api('POST', '/vehicles', payload);
+    }
+  }
 }
 
 function showCustomerModal(existing){
-  const c=existing||{};
-  showModal(c.id?'Edit Customer':'Add Customer', customerFormHTML(c),
-  async ()=>{
-    if (!validateCustomerFields('c-name','c-phone','c-email')) return;
-    const cust={name:document.getElementById('c-name').value.trim(),phone:document.getElementById('c-phone').value.trim(),email:document.getElementById('c-email').value.trim(),address:document.getElementById('c-addr').value.trim(),notes:document.getElementById('c-notes').value};
+  const c = existing || {};
+  const existingVehicles = c.id ? db.vehicles.filter(v => v.customerId === c.id) : [];
+  showModal(c.id?'Edit Customer':'Add Customer', customerFormHTML(c, existingVehicles),
+  async () => {
+    if (!validateCustomerFields()) return;
+    const cust = {name:document.getElementById('c-name').value.trim(), phone:document.getElementById('c-phone').value.trim(), email:document.getElementById('c-email').value.trim(), address:document.getElementById('c-addr').value.trim(), notes:document.getElementById('c-notes').value.trim()};
     try {
-      if(c.id) await api('PUT', '/customers/' + c.id, cust);
-      else await api('POST', '/customers', cust);
+      let customerId;
+      if (c.id) { await api('PUT', '/customers/' + c.id, cust); customerId = c.id; }
+      else { const created = await api('POST', '/customers', cust); customerId = created.id; }
+      await saveCustomerWithVehicles(customerId, !c.id);
       await refreshDB(); closeModal(); renderCustomers();
-    } catch(err) {}
-  },c.id?'Update':'Add Customer');
+      showToast(c.id ? 'Customer updated' : 'Customer added');
+    } catch(err) { showToast('Failed to save customer', true); }
+  }, c.id?'Update':'Add Customer', true);
 }
 
 function showQuickCustomerFromJob(){
   showModalOverlay('New Customer', customerFormHTML({}),
-  async ()=>{
-    if (!validateCustomerFields('c-name','c-phone','c-email')) return;
-    const cust={name:document.getElementById('c-name').value.trim(),phone:document.getElementById('c-phone').value.trim(),email:document.getElementById('c-email').value.trim(),address:document.getElementById('c-addr').value.trim(),notes:document.getElementById('c-notes').value};
+  async () => {
+    if (!validateCustomerFields()) return;
+    const cust = {name:document.getElementById('c-name').value.trim(), phone:document.getElementById('c-phone').value.trim(), email:document.getElementById('c-email').value.trim(), address:document.getElementById('c-addr').value.trim(), notes:document.getElementById('c-notes').value.trim()};
     try {
       const created = await api('POST', '/customers', cust);
+      await saveCustomerWithVehicles(created.id, true);
       await refreshDB();
       closeModalOverlay();
-      // Job modal is still open — inject the new customer into the dropdown and select it
       const custSel = document.getElementById('j-cust');
       if (custSel) {
         const newOpt = document.createElement('option');
@@ -2024,8 +2090,8 @@ function showQuickCustomerFromJob(){
         filterVehByCust();
         showToast(`Customer "${created.name}" created`);
       }
-    } catch(err) {}
-  },'Add Customer');
+    } catch(err) { showToast('Failed to save customer', true); }
+  }, 'Add Customer');
 }
 
 async function deleteCustomer(id){if(!confirm('Delete customer?'))return; await api('DELETE', '/customers/' + id); await refreshDB(); renderCustomers();}

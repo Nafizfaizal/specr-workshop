@@ -60,6 +60,7 @@ class CustomerBase(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     address: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class CustomerCreate(CustomerBase):
@@ -71,6 +72,7 @@ class CustomerUpdate(BaseModel):
     phone: Optional[str] = None
     email: Optional[str] = None
     address: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class CustomerResponse(CustomerBase):

@@ -28,6 +28,11 @@ STATIC_DIR = Path(__file__).parent.parent / "static"
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Additive migrations for columns added after initial deploy
+        from sqlalchemy import text
+        await conn.execute(text("ALTER TABLE customers ADD COLUMN IF NOT EXISTS notes TEXT"))
+        await conn.execute(text("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)"))
+        await conn.execute(text("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS date_paid DATE"))
     yield
     await engine.dispose()
 
