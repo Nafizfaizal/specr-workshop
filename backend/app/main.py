@@ -2,9 +2,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response, FileResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import Response, HTMLResponse
 from .database import engine, Base
+
+STATIC_DIR = Path(__file__).parent.parent / "static"
 from .routers import (
     auth,
     customers,
@@ -65,21 +66,12 @@ app.include_router(settings.router, prefix=API_PREFIX)
 app.include_router(users.router, prefix=API_PREFIX)
 
 
-STATIC_DIR = Path(__file__).parent.parent / "static"
-
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "workshop-management-api"}
 
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def serve_frontend():
-    return FileResponse(STATIC_DIR / "index.html")
-
-
-@app.get("/{path:path}")
-async def serve_spa(path: str):
-    f = STATIC_DIR / path
-    if f.exists() and f.is_file():
-        return FileResponse(f)
-    return FileResponse(STATIC_DIR / "index.html")
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    return HTMLResponse(content=html)
