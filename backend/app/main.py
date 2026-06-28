@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import Response
-from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.responses import Response, FileResponse
+from fastapi.staticfiles import StaticFiles
 from .database import engine, Base
 from .routers import (
     auth,
@@ -64,18 +65,21 @@ app.include_router(settings.router, prefix=API_PREFIX)
 app.include_router(users.router, prefix=API_PREFIX)
 
 
+STATIC_DIR = Path(__file__).parent.parent / "static"
+
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "service": "workshop-management-api"}
 
 
-@app.options("/{path:path}")
-async def preflight(path: str):
-    return Response(
-        status_code=200,
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
-            "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept",
-        },
-    )
+@app.get("/")
+async def serve_frontend():
+    return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/{path:path}")
+async def serve_spa(path: str):
+    f = STATIC_DIR / path
+    if f.exists() and f.is_file():
+        return FileResponse(f)
+    return FileResponse(STATIC_DIR / "index.html")
