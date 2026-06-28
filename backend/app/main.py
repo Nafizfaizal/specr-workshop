@@ -33,6 +33,9 @@ async def lifespan(app: FastAPI):
         await conn.execute(text("ALTER TABLE customers ADD COLUMN IF NOT EXISTS notes TEXT"))
         await conn.execute(text("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)"))
         await conn.execute(text("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS date_paid DATE"))
+        await conn.execute(text("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_rate NUMERIC(5,2) NOT NULL DEFAULT 5.00"))
+        await conn.execute(text("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS tax_amount NUMERIC(10,2) NOT NULL DEFAULT 0.00"))
+        await conn.execute(text("ALTER TABLE invoices ADD COLUMN IF NOT EXISTS grand_total NUMERIC(10,2) NOT NULL DEFAULT 0.00"))
     yield
     await engine.dispose()
 

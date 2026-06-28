@@ -761,9 +761,9 @@ function renderDashboard() {
   const thisWeekStart = new Date(); thisWeekStart.setDate(thisWeekStart.getDate() - thisWeekStart.getDay());
   const thisMonthStr = todayStr.slice(0,7);
 
-  const rev = db.invoices.reduce((s,i) => s+i.subtotal, 0);
-  const revToday = db.invoices.filter(i=>i.dateIssued===todayStr).reduce((s,i)=>s+i.subtotal,0);
-  const revMonth = db.invoices.filter(i=>i.dateIssued&&i.dateIssued.startsWith(thisMonthStr)).reduce((s,i)=>s+i.subtotal,0);
+  const rev = db.invoices.filter(i=>i.paid).reduce((s,i) => s+i.subtotal, 0);
+  const revToday = db.invoices.filter(i=>i.paid&&i.dateIssued===todayStr).reduce((s,i)=>s+i.subtotal,0);
+  const revMonth = db.invoices.filter(i=>i.paid&&i.dateIssued&&i.dateIssued.startsWith(thisMonthStr)).reduce((s,i)=>s+i.subtotal,0);
   const exp = db.expenses.reduce((s,e) => s+e.amount, 0);
   const profit = rev - exp;
   const openJobs = db.jobs.filter(j => !TERMINAL_STATUSES.includes(j.status)).length;
@@ -872,10 +872,10 @@ function renderDashboardCharts() {
   db.jobs.forEach(j=>{
     const jobMonth = (j.dateIn||'').slice(0,7);
     if(jobMonth !== thisMonthStr) return;
-    const svcDepts = (j.services||[]).filter(s=>s.dept);
+    const svcDepts = (j.services||[]).filter(s=>s.department);
     if(svcDepts.length){
       // Attribute each service line's revenue to its dept
-      svcDepts.forEach(s=>{ if(deptRev.hasOwnProperty(s.dept)) deptRev[s.dept]+=parseFloat(s.rate||0); });
+      svcDepts.forEach(s=>{ if(deptRev.hasOwnProperty(s.department)) deptRev[s.department]+=parseFloat(s.rate||0); });
       // Parts go to job's primary dept
       if(j.department && deptRev.hasOwnProperty(j.department)) deptRev[j.department]+=jobPartsTotal(j);
     } else if(j.department && deptRev.hasOwnProperty(j.department)){
@@ -940,7 +940,7 @@ function renderJobRows(jobs) {
     const deptColor = DEPT_COLORS[j.department] || '#888';
     return `<tr style="${over?'background:#fff5f5':j.priority==='urgent'?'background:#fffbf5':''}">
       <td><div class="fw-bold" style="color:var(--primary)">#${j.id.toUpperCase()}</div>${j.priority==='urgent'?'<span class="badge badge-urgent" style="font-size:10px;margin-top:2px">🔴 Urgent</span>':''}</td>
-      <td>${(()=>{const depts=[...new Set((j.services||[]).map(s=>s.dept).filter(Boolean))];return depts.length?depts.map(d=>`<span class="badge-dept dept-${d}" style="margin:1px 2px 1px 0;display:inline-flex">${DEPT_ICONS[d]||''} ${d}</span>`).join(''):(j.department?`<span class="badge-dept dept-${j.department}">${DEPT_ICONS[j.department]||''} ${j.department}</span>`:'<span style="color:var(--text-muted);font-size:12px">—</span>');})()}</td>
+      <td>${(()=>{const depts=[...new Set((j.services||[]).map(s=>s.department).filter(Boolean))];return depts.length?depts.map(d=>`<span class="badge-dept dept-${d}" style="margin:1px 2px 1px 0;display:inline-flex">${DEPT_ICONS[d]||''} ${d}</span>`).join(''):(j.department?`<span class="badge-dept dept-${j.department}">${DEPT_ICONS[j.department]||''} ${j.department}</span>`:'<span style="color:var(--text-muted);font-size:12px">—</span>');})()}</td>
       <td>${c.name||'—'}<br><small style="color:var(--text-muted)">${c.phone||''}</small></td>
       <td>${v.make||''} ${v.model||''} ${v.year||''}<br><small style="color:var(--text-muted)">${v.plate||''}</small></td>
       <td>${(st.name||'—').split(' ')[0]}</td>
@@ -966,7 +966,7 @@ function filterJobs() {
     const c=db.customers.find(x=>x.id===j.customerId)||{};
     const v=db.vehicles.find(x=>x.id===j.vehicleId)||{};
     const m=!q||(c.name||'').toLowerCase().includes(q)||(v.make+' '+v.model).toLowerCase().includes(q)||(v.plate||'').toLowerCase().includes(q);
-    const jobDepts=(j.services||[]).map(s=>s.dept).filter(Boolean);
+    const jobDepts=(j.services||[]).map(s=>s.department).filter(Boolean);
     const deptMatch=!dept||jobDepts.includes(dept)||(jobDepts.length===0&&j.department===dept);
     return m&&(!st||j.status===st)&&deptMatch;
   });
@@ -1055,9 +1055,9 @@ function showNewJobModal(prefill) {
 }
 
 function svcLineHTML(i,s={}) {
-  const deptOpts=DEPARTMENTS.map(d=>`<option value="${d}" ${s.dept===d?'selected':''}>${DEPT_ICONS[d]} ${d}</option>`).join('');
+  const deptOpts=DEPARTMENTS.map(d=>`<option value="${d}" ${s.department===d?'selected':''}>${DEPT_ICONS[d]} ${d}</option>`).join('');
   return `<div class="parts-line" style="grid-template-columns:2fr 130px 1fr 1fr 26px">
-    <input data-role="desc" type="text" placeholder="Service description" value="${s.desc||''}" oninput="calcJobTotals()">
+    <input data-role="desc" type="text" placeholder="Service description" value="${s.descriptionription||''}" oninput="calcJobTotals()">
     <select data-role="dept" style="padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:12px;background:var(--card);color:var(--text)">
       <option value="">— Dept</option>${deptOpts}
     </select>
@@ -1070,7 +1070,7 @@ function svcLineHTML(i,s={}) {
 function prtLineHTML(i,p={}) {
   const tot=(parseFloat(p.qty||1)*parseFloat(p.rate||0)).toFixed(2);
   return `<div class="parts-line">
-    <input type="text" placeholder="Part name" value="${p.desc||''}" oninput="calcJobTotals()">
+    <input type="text" placeholder="Part name" value="${p.descriptionription||''}" oninput="calcJobTotals()">
     <input type="text" placeholder="Part #" value="${p.partNo||''}">
     <input type="number" placeholder="Qty" value="${p.qty||1}" min="1" oninput="calcJobTotals()" data-role="qty">
     <input type="number" placeholder="Unit price" value="${p.rate||''}" oninput="calcJobTotals()" data-role="rate">
@@ -1121,14 +1121,14 @@ function getJobLines(containerId, isService) {
   const items=[];
   document.querySelectorAll(`#${containerId} .parts-line`).forEach(row=>{
     if(isService){
-      const desc=(row.querySelector('[data-role="desc"]')?.value||'').trim();
-      const dept=row.querySelector('[data-role="dept"]')?.value||'';
+      const description=(row.querySelector('[data-role="desc"]')?.value||'').trim();
+      const department=row.querySelector('[data-role="dept"]')?.value||'';
       const rate=parseFloat(row.querySelector('[data-role="rate"]')?.value)||0;
-      if(desc) items.push({ desc, dept, rate });
+      if(description) items.push({ description, department, rate });
     } else {
       const inputs=row.querySelectorAll('input');
-      const desc=inputs[0].value.trim();
-      if(desc) items.push({ desc, partNo:inputs[1].value.trim(), qty:parseFloat(inputs[2].value)||1, rate:parseFloat(inputs[3].value)||0 });
+      const description=inputs[0].value.trim();
+      if(description) items.push({ description, partNo:inputs[1].value.trim(), qty:parseFloat(inputs[2].value)||1, rate:parseFloat(inputs[3].value)||0 });
     }
   });
   return items;
@@ -1250,12 +1250,12 @@ function buildJobCardHTML(jobId) {
   const prtTotal = jobPartsTotal(j);
   const discount = jobDiscount(j);
   const total    = jobTotal(j);
-  const depts    = [...new Set((j.services||[]).map(s=>s.dept).filter(Boolean))];
+  const depts    = [...new Set((j.services||[]).map(s=>s.department).filter(Boolean))];
 
   const svcRows = (j.services||[]).map((s,i)=>`
     <tr>
       <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;width:32px;color:#64748b;font-size:12px">${i+1}.</td>
-      <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0">${s.desc}${s.dept?`<span style="margin-left:8px;font-size:10px;background:#e0f7f7;color:#007a7d;padding:1px 6px;border-radius:10px;font-weight:700">${DEPT_ICONS[s.dept]||''} ${s.dept}</span>`:''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0">${s.description}${s.department?`<span style="margin-left:8px;font-size:10px;background:#e0f7f7;color:#007a7d;padding:1px 6px;border-radius:10px;font-weight:700">${DEPT_ICONS[s.department]||''} ${s.department}</span>`:''}</td>
       <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;width:80px;text-align:center">
         <div style="width:20px;height:20px;border:1.5px solid #cbd5e1;border-radius:4px;margin:0 auto"></div>
       </td>
@@ -1263,7 +1263,7 @@ function buildJobCardHTML(jobId) {
 
   const prtRows = (j.parts||[]).map(p=>`
     <tr>
-      <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0">${p.desc}${p.partNo?` <span style="color:#64748b;font-size:11px">[${p.partNo}]</span>`:''}</td>
+      <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0">${p.description}${p.partNo?` <span style="color:#64748b;font-size:11px">[${p.partNo}]</span>`:''}</td>
       <td style="padding:7px 10px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:600;color:#00B4B8">${p.qty||1}</td>
     </tr>`).join('');
 
@@ -1407,11 +1407,11 @@ function shareJobCardWhatsApp(id) {
   const c  = db.customers.find(x=>x.id===j.customerId)||{};
   const v  = db.vehicles.find(x=>x.id===j.vehicleId)||{};
   const st = db.staff.find(x=>x.id===j.staffId)||{};
-  const depts = [...new Set((j.services||[]).map(s=>s.dept).filter(Boolean))];
+  const depts = [...new Set((j.services||[]).map(s=>s.department).filter(Boolean))];
 
   const fmt2 = n => parseFloat(n||0).toFixed(2);
-  const svcLines = (j.services||[]).map(s=>`  • ${s.desc}${s.dept?' ['+s.dept+']':''}: AED ${fmt2(s.rate)}`).join('\n');
-  const prtLines = (j.parts||[]).map(p=>`  • ${p.desc}${p.qty>1?' ×'+p.qty:''}: AED ${fmt2((p.qty||1)*p.rate)}`).join('\n');
+  const svcLines = (j.services||[]).map(s=>`  • ${s.description}${s.department?' ['+s.department+']':''}: AED ${fmt2(s.rate)}`).join('\n');
+  const prtLines = (j.parts||[]).map(p=>`  • ${p.description}${p.qty>1?' ×'+p.qty:''}: AED ${fmt2((p.qty||1)*p.rate)}`).join('\n');
   const discount = jobDiscount(j);
 
   const msg =
@@ -1451,12 +1451,12 @@ function buildSpecRInvoiceHTML(invId) {
   const grandTotal=jobTotal(job);
 
   // Service rows (min 8 rows for spacing)
-  const svcRows=services.map(s=>`<tr><td>${s.desc}${s.dept?`<span style="margin-left:8px;font-size:10px;background:#e0f7f7;color:#007a7d;padding:1px 6px;border-radius:10px;font-weight:700">${DEPT_ICONS[s.dept]||''} ${s.dept}</span>`:''}</td><td>${fmt(s.rate)}</td></tr>`).join('');
+  const svcRows=services.map(s=>`<tr><td>${s.description}${s.department?`<span style="margin-left:8px;font-size:10px;background:#e0f7f7;color:#007a7d;padding:1px 6px;border-radius:10px;font-weight:700">${DEPT_ICONS[s.department]||''} ${s.department}</span>`:''}</td><td>${fmt(s.rate)}</td></tr>`).join('');
   const svcEmpty=Math.max(0,8-services.length);
   const svcEmptyRows=Array(svcEmpty).fill('<tr class="empty-row"><td>&nbsp;</td><td>&nbsp;</td></tr>').join('');
 
   // Parts rows (min 8 rows)
-  const prtRows=parts.map(p=>`<tr class="part-row"><td>${p.desc}</td><td style="text-align:center">${p.partNo||'—'}</td><td style="text-align:center">${p.qty||1}</td><td style="text-align:right">${fmt(p.rate)}</td><td style="text-align:right">${fmt((p.qty||1)*p.rate)}</td></tr>`).join('');
+  const prtRows=parts.map(p=>`<tr class="part-row"><td>${p.description}</td><td style="text-align:center">${p.partNo||'—'}</td><td style="text-align:center">${p.qty||1}</td><td style="text-align:right">${fmt(p.rate)}</td><td style="text-align:right">${fmt((p.qty||1)*p.rate)}</td></tr>`).join('');
   const prtEmpty=Math.max(0,8-parts.length);
   const prtEmptyRows=Array(prtEmpty).fill('<tr class="empty-row"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>').join('');
 
@@ -1555,10 +1555,20 @@ function buildSpecRInvoiceHTML(invId) {
           <span class="t-cur">AED</span>
           <span class="t-val">- ${fmt(discount)}</span>
         </div>`:''}
-        <div class="specr-total-row grand">
-          <span class="t-label">TOTAL</span>
+        <div class="specr-total-row">
+          <span class="t-label">SUBTOTAL</span>
           <span class="t-cur">AED</span>
           <span class="t-val">${fmt(grandTotal)}</span>
+        </div>
+        <div class="specr-total-row">
+          <span class="t-label">VAT (5%)</span>
+          <span class="t-cur">AED</span>
+          <span class="t-val">${fmt(grandTotal * 0.05)}</span>
+        </div>
+        <div class="specr-total-row grand">
+          <span class="t-label">GRAND TOTAL</span>
+          <span class="t-cur">AED</span>
+          <span class="t-val">${fmt(grandTotal * 1.05)}</span>
         </div>
       </div>
     </div>
@@ -1612,8 +1622,8 @@ function shareInvoiceWhatsApp(id) {
   const v   = db.vehicles.find(x=>x.id===inv.vehicleId)||{};
 
   const fmt2 = n => parseFloat(n||0).toFixed(2);
-  const svcLines = (job.services||[]).map(s=>`  • ${s.desc}: AED ${fmt2(s.rate)}`).join('\n');
-  const prtLines = (job.parts||[]).map(p=>`  • ${p.desc}${p.qty>1?' ×'+p.qty:''}: AED ${fmt2((p.qty||1)*p.rate)}`).join('\n');
+  const svcLines = (job.services||[]).map(s=>`  • ${s.description}: AED ${fmt2(s.rate)}`).join('\n');
+  const prtLines = (job.parts||[]).map(p=>`  • ${p.description}${p.qty>1?' ×'+p.qty:''}: AED ${fmt2((p.qty||1)*p.rate)}`).join('\n');
   const discount = parseFloat(job.discount||0);
 
   const msg =
@@ -1696,7 +1706,7 @@ function showExpenseModal(existing) {
     </div>`,
   async () => {
     const exp={ date:document.getElementById('e-date').value, category:document.getElementById('e-cat').value, description:document.getElementById('e-desc').value, vendor:document.getElementById('e-vendor').value, amount:parseFloat(document.getElementById('e-amount').value)||0 };
-    if(!exp.description||!exp.amount){ alert('Please fill description and amount.'); return; }
+    if(!exp.descriptionription||!exp.amount){ alert('Please fill description and amount.'); return; }
     try {
       if(e.id) await api('PUT', '/expenses/' + e.id, exp);
       else await api('POST', '/expenses', exp);
@@ -1708,12 +1718,12 @@ async function deleteExpense(id){ if(!confirm('Delete?')) return; await api('DEL
 
 // ─── PROFITABILITY ────────────────────────────────────────────────────────────
 function renderProfitability() {
-  const rev=db.invoices.reduce((s,i)=>s+i.subtotal,0);
+  const rev=db.invoices.filter(i=>i.paid).reduce((s,i)=>s+i.subtotal,0);
   const exp=db.expenses.reduce((s,e)=>s+e.amount,0);
   const profit=rev-exp;
   const margin=rev>0?(profit/rev*100):0;
   const byMonth={};
-  db.invoices.forEach(i=>{ const m=i.dateIssued?i.dateIssued.slice(0,7):''; if(!byMonth[m]) byMonth[m]={rev:0,exp:0}; byMonth[m].rev+=i.subtotal; });
+  db.invoices.filter(i=>i.paid).forEach(i=>{ const m=i.dateIssued?i.dateIssued.slice(0,7):''; if(!byMonth[m]) byMonth[m]={rev:0,exp:0}; byMonth[m].rev+=i.subtotal; });
   db.expenses.forEach(e=>{ const m=e.date?e.date.slice(0,7):''; if(!byMonth[m]) byMonth[m]={rev:0,exp:0}; byMonth[m].exp+=e.amount; });
   const months=Object.keys(byMonth).sort();
   const staffJobs={};
@@ -1745,9 +1755,9 @@ function renderProfitability() {
           const deptRevAll={}; DEPARTMENTS.forEach(d=>deptRevAll[d]=0);
           const deptJobsAll={}; DEPARTMENTS.forEach(d=>deptJobsAll[d]=0);
           db.jobs.forEach(j=>{
-            const svcDepts=(j.services||[]).filter(s=>s.dept);
+            const svcDepts=(j.services||[]).filter(s=>s.department);
             if(svcDepts.length){
-              svcDepts.forEach(s=>{ if(deptRevAll.hasOwnProperty(s.dept)) deptRevAll[s.dept]+=parseFloat(s.rate||0); });
+              svcDepts.forEach(s=>{ if(deptRevAll.hasOwnProperty(s.department)) deptRevAll[s.department]+=parseFloat(s.rate||0); });
               if(j.department&&deptRevAll.hasOwnProperty(j.department)) deptRevAll[j.department]+=jobPartsTotal(j);
               // Count job under its primary dept (or the first service dept)
               const countDept=j.department||(svcDepts[0]?.dept);
@@ -2131,8 +2141,8 @@ function showVehicleHistory(vehId) {
   const jobsHTML = jobs.map(j=>{
     const st=db.staff.find(x=>x.id===j.staffId)||{};
     const inv=db.invoices.find(i=>i.jobId===j.id);
-    const svcList=(j.services||[]).map(s=>s.desc).join(', ')||'—';
-    const partList=(j.parts||[]).map(p=>p.desc).join(', ')||'—';
+    const svcList=(j.services||[]).map(s=>s.description).join(', ')||'—';
+    const partList=(j.parts||[]).map(p=>p.description).join(', ')||'—';
     return `<div style="border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:12px">
         <div>

@@ -236,6 +236,9 @@ class InvoiceBase(BaseModel):
     inv_num: str
     date_issued: date
     subtotal: Decimal
+    tax_rate: Decimal = Decimal("5.00")
+    tax_amount: Decimal = Decimal("0.00")
+    grand_total: Decimal = Decimal("0.00")
     paid: bool = False
     payment_method: Optional[str] = None
     date_paid: Optional[date] = None

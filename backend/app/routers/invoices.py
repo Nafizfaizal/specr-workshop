@@ -72,7 +72,10 @@ async def create_invoice(
 
     services_total = sum(Decimal(str(s.rate)) for s in job.services)
     parts_total = sum(Decimal(str(p.qty)) * Decimal(str(p.rate)) for p in job.parts)
-    subtotal = services_total + parts_total - Decimal(str(job.discount))
+    subtotal = max(Decimal("0.00"), services_total + parts_total - Decimal(str(job.discount)))
+    tax_rate = Decimal("5.00")
+    tax_amount = (subtotal * tax_rate / 100).quantize(Decimal("0.01"))
+    grand_total = subtotal + tax_amount
 
     count_result = await db.execute(select(func.count()).select_from(Invoice))
     inv_count = count_result.scalar() + 1
@@ -86,6 +89,9 @@ async def create_invoice(
         inv_num=inv_num,
         date_issued=data.date_issued or date.today(),
         subtotal=subtotal,
+        tax_rate=tax_rate,
+        tax_amount=tax_amount,
+        grand_total=grand_total,
         paid=False,
     )
     db.add(invoice)
