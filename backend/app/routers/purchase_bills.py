@@ -1,10 +1,11 @@
 from typing import List, Optional
+from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
 from ..database import get_db
-from ..models import PurchaseBill, PurchaseBillItem, User
+from ..models import PurchaseBill, PurchaseBillItem, Inventory, User
 from ..schemas import PurchaseBillCreate, PurchaseBillUpdate, PurchaseBillResponse
 from ..auth import get_current_user, require_superadmin
 
@@ -63,6 +64,22 @@ async def create_bill(
     for item in data.items:
         db.add(PurchaseBillItem(bill_id=bill.id, **item.model_dump()))
 
+    # Auto-update inventory quantities by matching part_no then part_name
+    for item in data.items:
+        inv_item = None
+        if item.part_no:
+            res = await db.execute(
+                select(Inventory).where(func.lower(Inventory.part_no) == item.part_no.lower())
+            )
+            inv_item = res.scalar_one_or_none()
+        if not inv_item and item.part_name:
+            res = await db.execute(
+                select(Inventory).where(func.lower(Inventory.name) == item.part_name.lower())
+            )
+            inv_item = res.scalar_one_or_none()
+        if inv_item:
+            inv_item.qty = Decimal(str(inv_item.qty or 0)) + Decimal(str(item.qty or 0))
+
     await db.commit()
     result = await db.execute(
         select(PurchaseBill).options(*_bill_options()).where(PurchaseBill.id == bill.id)
@@ -112,7 +129,9 @@ async def mark_bill_paid(
     bill = result.scalar_one_or_none()
     if not bill:
         raise HTTPException(status_code=404, detail="Purchase bill not found")
+    from datetime import date as _date
     bill.paid = True
+    bill.date_paid = _date.today()
     await db.commit()
     result = await db.execute(
         select(PurchaseBill).options(*_bill_options()).where(PurchaseBill.id == bill_id)

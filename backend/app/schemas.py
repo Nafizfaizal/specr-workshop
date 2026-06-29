@@ -415,6 +415,7 @@ class PurchaseBillUpdate(BaseModel):
 class PurchaseBillResponse(PurchaseBillBase):
     model_config = ConfigDict(from_attributes=True)
     id: str
+    date_paid: Optional[date] = None
     created_at: datetime
     supplier: Optional[SupplierResponse] = None
     items: List[PurchaseBillItemResponse] = []
