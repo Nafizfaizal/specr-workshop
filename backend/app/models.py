@@ -274,3 +274,60 @@ class AppSettings(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
     supplier_reminder_days: Mapped[int] = mapped_column(Integer, default=7, nullable=False)
+
+
+class Estimate(Base):
+    __tablename__ = "estimates"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    customer_id: Mapped[str] = mapped_column(String(36), ForeignKey("customers.id"), nullable=False)
+    vehicle_id: Mapped[str] = mapped_column(String(36), ForeignKey("vehicles.id"), nullable=False)
+    staff_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("staff.id"), nullable=True)
+    est_num: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    date_issued: Mapped[date] = mapped_column(Date, nullable=False)
+    valid_until: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
+    status: Mapped[str] = mapped_column(
+        SAEnum("draft", "sent", "approved", "rejected", "converted", name="est_status"),
+        nullable=False, default="draft",
+    )
+    notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    discount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0"), nullable=False)
+    subtotal: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+    tax_amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+    grand_total: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+
+    customer: Mapped["Customer"] = relationship("Customer")
+    vehicle: Mapped["Vehicle"] = relationship("Vehicle")
+    staff: Mapped[Optional["Staff"]] = relationship("Staff")
+    services: Mapped[list["EstimateService"]] = relationship(
+        "EstimateService", back_populates="estimate", cascade="all, delete-orphan"
+    )
+    parts: Mapped[list["EstimatePart"]] = relationship(
+        "EstimatePart", back_populates="estimate", cascade="all, delete-orphan"
+    )
+
+
+class EstimateService(Base):
+    __tablename__ = "estimate_services"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    estimate_id: Mapped[str] = mapped_column(String(36), ForeignKey("estimates.id", ondelete="CASCADE"), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    department: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    rate: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+
+    estimate: Mapped["Estimate"] = relationship("Estimate", back_populates="services")
+
+
+class EstimatePart(Base):
+    __tablename__ = "estimate_parts"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    estimate_id: Mapped[str] = mapped_column(String(36), ForeignKey("estimates.id", ondelete="CASCADE"), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    part_no: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    qty: Mapped[Decimal] = mapped_column(Numeric(10, 3), nullable=False)
+    rate: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+
+    estimate: Mapped["Estimate"] = relationship("Estimate", back_populates="parts")

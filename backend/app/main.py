@@ -9,6 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from .database import engine, Base
 from .routers import (
     auth,
+    estimates,
     customers,
     vehicles,
     staff,
@@ -69,6 +70,7 @@ app.add_middleware(
 API_PREFIX = "/api"
 
 app.include_router(auth.router, prefix=API_PREFIX)
+app.include_router(estimates.router, prefix=API_PREFIX)
 app.include_router(customers.router, prefix=API_PREFIX)
 app.include_router(vehicles.router, prefix=API_PREFIX)
 app.include_router(staff.router, prefix=API_PREFIX)
