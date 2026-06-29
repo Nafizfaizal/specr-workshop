@@ -770,7 +770,8 @@ function renderDashboard() {
   const revToday = db.invoices.filter(i=>i.paid&&i.dateIssued===todayStr).reduce((s,i)=>s+i.subtotal,0);
   const revMonth = db.invoices.filter(i=>i.paid&&i.dateIssued&&i.dateIssued.startsWith(thisMonthStr)).reduce((s,i)=>s+i.subtotal,0);
   const exp = db.expenses.reduce((s,e) => s+e.amount, 0);
-  const profit = rev - exp;
+  const fcExp = (db.fixedCosts||[]).filter(fc=>fc.active!==false).reduce((s,fc)=>s+parseFloat(fc.amount||0),0);
+  const profit = rev - exp - fcExp;
   const openJobs = db.jobs.filter(j => !TERMINAL_STATUSES.includes(j.status)).length;
   const urgentJobs = db.jobs.filter(j => j.priority==='urgent' && !TERMINAL_STATUSES.includes(j.status));
   const overdueJobs = db.jobs.filter(j => isOverdue(j));
@@ -2073,7 +2074,8 @@ async function deleteExpense(id){ if(!confirm('Delete?')) return; await api('DEL
 function renderProfitability() {
   const rev=db.invoices.filter(i=>i.paid).reduce((s,i)=>s+i.subtotal,0);
   const exp=db.expenses.reduce((s,e)=>s+e.amount,0);
-  const profit=rev-exp;
+  const fcExp=(db.fixedCosts||[]).filter(fc=>fc.active!==false).reduce((s,fc)=>s+parseFloat(fc.amount||0),0);
+  const profit=rev-exp-fcExp;
   const margin=rev>0?(profit/rev*100):0;
   const byMonth={};
   db.invoices.filter(i=>i.paid).forEach(i=>{ const m=i.dateIssued?i.dateIssued.slice(0,7):''; if(!byMonth[m]) byMonth[m]={rev:0,exp:0}; byMonth[m].rev+=i.subtotal; });
