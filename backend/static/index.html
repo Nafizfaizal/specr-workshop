@@ -2964,12 +2964,10 @@ function renderFCRows(fcs) {
       <td style="${isOverdue?'color:var(--danger);font-weight:700':isAlert?'color:#d97706;font-weight:700':''}">${fmtDate(fc.nextDueDate)||'—'}${isOverdue?' ⚠️':isAlert?' 🔔':''}</td>
       <td style="font-size:12px;color:var(--text-muted)">${fc.reminderDays||7}d before</td>
       <td style="font-size:12px;color:var(--text-muted)">${fmtDate(fc.lastPaidDate)||'—'}</td>
-      <td><span class="badge ${fc.paidOneTime?'badge-invoiced':isActive?'badge-completed':'badge-pending'}">${fc.paidOneTime?'Paid (Done)':(isActive?'Active':'Paused')}</span></td>
+      <td><span class="badge ${fc.paid?'badge-invoiced':isActive?'badge-completed':'badge-pending'}">${fc.paid?'Paid':(isActive?'Active':'Paused')}</span></td>
       <td><div style="display:flex;gap:4px;flex-wrap:wrap">
-        ${isActive&&fc.nextDueDate?`<button class="btn btn-primary btn-sm" onclick="markFixedCostPaid('${fc.id}')">Mark Paid</button>`:''}
+        ${isActive&&fc.nextDueDate&&!fc.paid?`<button class="btn btn-primary btn-sm" onclick="markFixedCostPaid('${fc.id}')">Mark Paid</button>`:''}
         <button class="btn btn-secondary btn-sm" onclick="showFixedCostModal('${fc.id}')">Edit</button>
-        ${!fc.paidOneTime?`<button class="btn btn-secondary btn-sm" onclick="toggleFCActive('${fc.id}')">${isActive?'Pause':'Resume'}</button>`:''}
-        <button class="btn btn-danger btn-sm" onclick="deleteFixedCost('${fc.id}')">✕</button>
       </div></td>
     </tr>`;
   }).join('');
@@ -3015,6 +3013,7 @@ function showFixedCostModal(existingId) {
     </div>
     <div class="form-group"><label>Vendor / Payee</label><input id="fc-vendor" value="${fc.vendor||''}" placeholder="e.g. DEWA, Property Owner, Staff salaries"></div>
     <div class="form-group"><label>Notes</label><textarea id="fc-notes" style="min-height:56px" placeholder="Account number, reference, etc.">${fc.notes||''}</textarea></div>
+    ${existingId&&fc.paid?`<div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="fc-mark-unpaid" style="width:16px;height:16px"> Mark as Unpaid (reset paid status)</label></div>`:''}
   `, ()=>saveFixedCost(existingId), existingId?'Update':'Add Fixed Cost');
 }
 
@@ -3022,6 +3021,7 @@ async function saveFixedCost(existingId) {
   const name=(document.getElementById('fc-name').value||'').trim();
   const amount=parseFloat(document.getElementById('fc-amount').value)||0;
   if(!name){alert('Name is required.');return;}
+  const markUnpaid = document.getElementById('fc-mark-unpaid')?.checked;
   const fc={
     name,
     category:document.getElementById('fc-cat').value,
@@ -3030,6 +3030,7 @@ async function saveFixedCost(existingId) {
     reminderDays:parseInt(document.getElementById('fc-rem').value)||7,
     vendor:document.getElementById('fc-vendor').value.trim(),
     notes:document.getElementById('fc-notes').value.trim(),
+    ...(markUnpaid ? {paid: false} : {}),
   };
   try {
     if(existingId) await api('PUT', '/fixed-costs/' + existingId, fc);

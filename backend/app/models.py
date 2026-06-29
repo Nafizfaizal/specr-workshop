@@ -265,6 +265,7 @@ class FixedCost(Base):
     vendor: Mapped[str] = mapped_column(String(200), nullable=True)
     notes: Mapped[str] = mapped_column(Text, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    paid: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     last_paid_date: Mapped[date] = mapped_column(Date, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 

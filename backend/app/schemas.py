@@ -432,6 +432,7 @@ class FixedCostBase(BaseModel):
     vendor: Optional[str] = None
     notes: Optional[str] = None
     active: bool = True
+    paid: bool = False
 
 
 class FixedCostCreate(FixedCostBase):
@@ -448,6 +449,7 @@ class FixedCostUpdate(BaseModel):
     vendor: Optional[str] = None
     notes: Optional[str] = None
     active: Optional[bool] = None
+    paid: Optional[bool] = None
 
 
 class FixedCostResponse(FixedCostBase):

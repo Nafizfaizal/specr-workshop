@@ -86,6 +86,7 @@ async def mark_fixed_cost_paid(
 
     today = date.today()
     fc.last_paid_date = today
+    fc.paid = True
 
     if fc.frequency == "one-time":
         fc.active = False
