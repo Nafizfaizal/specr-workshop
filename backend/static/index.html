@@ -1706,7 +1706,7 @@ function showExpenseModal(existing) {
     </div>`,
   async () => {
     const exp={ date:document.getElementById('e-date').value, category:document.getElementById('e-cat').value, description:document.getElementById('e-desc').value, vendor:document.getElementById('e-vendor').value, amount:parseFloat(document.getElementById('e-amount').value)||0 };
-    if(!exp.descriptionription||!exp.amount){ alert('Please fill description and amount.'); return; }
+    if(!exp.description||!exp.amount){ alert('Please fill description and amount.'); return; }
     try {
       if(e.id) await api('PUT', '/expenses/' + e.id, exp);
       else await api('POST', '/expenses', exp);
