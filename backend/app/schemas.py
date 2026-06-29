@@ -61,6 +61,8 @@ class CustomerBase(BaseModel):
     email: Optional[str] = None
     address: Optional[str] = None
     notes: Optional[str] = None
+    customer_type: str = "individual"
+    trn: Optional[str] = None
 
 
 class CustomerCreate(CustomerBase):
@@ -73,6 +75,8 @@ class CustomerUpdate(BaseModel):
     email: Optional[str] = None
     address: Optional[str] = None
     notes: Optional[str] = None
+    customer_type: Optional[str] = None
+    trn: Optional[str] = None
 
 
 class CustomerResponse(CustomerBase):

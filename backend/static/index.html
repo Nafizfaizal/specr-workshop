@@ -1959,21 +1959,27 @@ function renderCustomers() {
   document.getElementById('content').innerHTML=`
     <div class="section-filters"><input class="filter-input" id="cust-search" placeholder="🔍 Search customers..." oninput="filterCustomers()" style="width:260px"></div>
     <div class="card"><div class="table-wrap"><table>
-      <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Notes</th><th>Vehicles</th><th>Jobs</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Type</th><th>Phone</th><th>Email</th><th>TRN</th><th>Vehicles</th><th>Jobs</th><th>Actions</th></tr></thead>
       <tbody id="cust-tbody">${renderCustomerRows(db.customers)}</tbody>
     </table></div></div>`;
 }
 function renderCustomerRows(custs) {
-  if(!custs.length) return`<tr><td colspan="7"><div class="empty"><div class="empty-icon">👤</div><p>No customers yet</p></div></td></tr>`;
-  return custs.map(c=>`<tr>
+  if(!custs.length) return`<tr><td colspan="9"><div class="empty"><div class="empty-icon">👤</div><p>No customers yet</p></div></td></tr>`;
+  return custs.map(c=>{
+    const isCompany=(c.customerType||c.customer_type||'individual')==='company';
+    const typeBadge=isCompany
+      ?`<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;background:rgba(99,102,241,.15);color:#6366f1">🏢 Company</span>`
+      :`<span style="font-size:11px;font-weight:700;padding:2px 8px;border-radius:12px;background:rgba(16,185,129,.12);color:#10b981">👤 Individual</span>`;
+    return`<tr>
     <td class="fw-bold">${c.name}</td>
+    <td>${typeBadge}</td>
     <td>${c.phone||'—'}</td>
     <td>${c.email||'—'}</td>
-    <td style="max-width:200px"><span style="font-size:12px;color:var(--text-muted)">${c.notes?c.notes.slice(0,60)+(c.notes.length>60?'…':''):'—'}</span></td>
+    <td style="font-size:12px;color:var(--text-muted)">${c.trn||'—'}</td>
     <td style="text-align:center">${db.vehicles.filter(v=>v.customerId===c.id).length}</td>
     <td style="text-align:center">${db.jobs.filter(j=>j.customerId===c.id).length}</td>
     <td><button class="btn btn-secondary btn-sm" onclick="showCustomerModal(db.customers.find(x=>x.id==='${c.id}'))">Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">✕</button></td>
-  </tr>`).join('');
+  </tr>`;}).join('');
 }
 function filterCustomers(){ const q=document.getElementById('cust-search').value.toLowerCase(); document.getElementById('cust-tbody').innerHTML=renderCustomerRows(db.customers.filter(c=>c.name.toLowerCase().includes(q)||(c.phone||'').includes(q))); }
 function validateCustomerFields() {
@@ -2025,11 +2031,40 @@ function readCustVehRows() {
   }).filter(v => v.make || v.model || v.plate);
 }
 
+function setCustType(type) {
+  document.getElementById('c-type').value = type;
+  const isCompany = type === 'company';
+  document.getElementById('ctype-individual').style.background = isCompany ? 'var(--surface)' : 'var(--primary)';
+  document.getElementById('ctype-individual').style.color = isCompany ? 'var(--text-muted)' : '#fff';
+  document.getElementById('ctype-company').style.background = isCompany ? 'var(--primary)' : 'var(--surface)';
+  document.getElementById('ctype-company').style.color = isCompany ? '#fff' : 'var(--text-muted)';
+  document.getElementById('c-trn-row').style.display = isCompany ? '' : 'none';
+  document.getElementById('c-name-label').textContent = (isCompany ? 'Company Name' : 'Full Name') + ' *';
+  document.getElementById('c-name').placeholder = isCompany ? 'Company name' : 'Customer name';
+}
+
 function customerFormHTML(c, existingVehicles=[]) {
   _custVehicles = existingVehicles.map((v,i) => ({...v, _idx: v.id||i}));
   const vehRows = _custVehicles.map((v,i) => custVehLineHTML(v._idx, v)).join('');
+  const isCompany = (c.customerType||c.customer_type||'individual') === 'company';
   return `
-    <div class="form-group" style="margin-bottom:12px"><label>Full Name *</label><input type="text" id="c-name" value="${c.name||''}" placeholder="Customer name"></div>
+    <div style="display:flex;gap:0;margin-bottom:14px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+      <button type="button" id="ctype-individual" onclick="setCustType('individual')"
+        style="flex:1;padding:8px 0;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;
+        background:${!isCompany?'var(--primary)':'var(--surface)'};color:${!isCompany?'#fff':'var(--text-muted)'}">
+        👤 Individual
+      </button>
+      <button type="button" id="ctype-company" onclick="setCustType('company')"
+        style="flex:1;padding:8px 0;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;border-left:1px solid var(--border);
+        background:${isCompany?'var(--primary)':'var(--surface)'};color:${isCompany?'#fff':'var(--text-muted)'}">
+        🏢 Company
+      </button>
+    </div>
+    <input type="hidden" id="c-type" value="${isCompany?'company':'individual'}">
+    <div class="form-group" style="margin-bottom:12px"><label id="c-name-label">${isCompany?'Company Name':'Full Name'} *</label><input type="text" id="c-name" value="${c.name||''}" placeholder="${isCompany?'Company name':'Customer name'}"></div>
+    <div id="c-trn-row" style="margin-bottom:12px;${isCompany?'':'display:none'}">
+      <div class="form-group"><label>TRN (Tax Registration Number)</label><input type="text" id="c-trn" value="${c.trn||''}" placeholder="e.g. 100 234 567 890 03" maxlength="30"></div>
+    </div>
     <div class="form-row cols-2">
       <div class="form-group"><label>Phone <small style="color:var(--text-muted);font-weight:400">(7–15 digits)</small></label><input type="text" id="c-phone" value="${c.phone||''}" placeholder="+971 50 XXX XXXX" maxlength="20"></div>
       <div class="form-group"><label>Email</label><input type="email" id="c-email" value="${c.email||''}" placeholder="email@example.com"></div>
@@ -2068,7 +2103,7 @@ function showCustomerModal(existing){
   showModal(c.id?'Edit Customer':'Add Customer', customerFormHTML(c, existingVehicles),
   async () => {
     if (!validateCustomerFields()) return;
-    const cust = {name:document.getElementById('c-name').value.trim(), phone:document.getElementById('c-phone').value.trim(), email:document.getElementById('c-email').value.trim(), address:document.getElementById('c-addr').value.trim(), notes:document.getElementById('c-notes').value.trim()};
+    const cust = {name:document.getElementById('c-name').value.trim(), phone:document.getElementById('c-phone').value.trim(), email:document.getElementById('c-email').value.trim(), address:document.getElementById('c-addr').value.trim(), notes:document.getElementById('c-notes').value.trim(), customerType:document.getElementById('c-type').value, trn:document.getElementById('c-trn').value.trim()||null};
     try {
       let customerId;
       if (c.id) { await api('PUT', '/customers/' + c.id, cust); customerId = c.id; }
@@ -2084,7 +2119,7 @@ function showQuickCustomerFromJob(){
   showModalOverlay('New Customer', customerFormHTML({}),
   async () => {
     if (!validateCustomerFields()) return;
-    const cust = {name:document.getElementById('c-name').value.trim(), phone:document.getElementById('c-phone').value.trim(), email:document.getElementById('c-email').value.trim(), address:document.getElementById('c-addr').value.trim(), notes:document.getElementById('c-notes').value.trim()};
+    const cust = {name:document.getElementById('c-name').value.trim(), phone:document.getElementById('c-phone').value.trim(), email:document.getElementById('c-email').value.trim(), address:document.getElementById('c-addr').value.trim(), notes:document.getElementById('c-notes').value.trim(), customerType:document.getElementById('c-type').value, trn:document.getElementById('c-trn').value.trim()||null};
     try {
       const created = await api('POST', '/customers', cust);
       await saveCustomerWithVehicles(created.id, true);
