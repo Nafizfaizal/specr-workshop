@@ -749,8 +749,8 @@ function updateBadges() {
 }
 
 // ─── JOB HELPERS ─────────────────────────────────────────────────────────────
-function jobStatusLabel(s) { return { pending:'Pending', inprogress:'In Progress', waitingparts:'Waiting Parts', qc:'QC', ready:'Ready', delivered:'Delivered', completed:'Completed', invoiced:'Invoiced' }[s] || s; }
-const TERMINAL_STATUSES = ['completed','invoiced','delivered'];
+function jobStatusLabel(s) { return { pending:'Pending', inprogress:'In Progress', waitingparts:'Waiting Parts', qc:'QC', ready:'Ready', completed:'Completed', invoiced:'Invoiced' }[s] || s; }
+const TERMINAL_STATUSES = ['completed','invoiced'];
 function jobServiceTotal(job) { return (job.services||[]).reduce((s,x) => s + parseFloat(x.rate||0), 0); }
 function jobPartsTotal(job) { return (job.parts||[]).reduce((s,x) => s + (parseFloat(x.qty||1)*parseFloat(x.rate||0)), 0); }
 function jobDiscount(job) { return parseFloat(job.discount||0); }
@@ -1237,7 +1237,7 @@ function renderJobs() {
       </select>
       <select class="filter-input" id="job-status-filter" onchange="filterJobs()">
         <option value="">All Statuses</option>
-        <option value="pending">Pending</option><option value="inprogress">In Progress</option><option value="waitingparts">Waiting Parts</option><option value="qc">QC</option><option value="ready">Ready</option><option value="delivered">Delivered</option><option value="completed">Completed</option><option value="invoiced">Invoiced</option>
+        <option value="pending">Pending</option><option value="inprogress">In Progress</option><option value="waitingparts">Waiting Parts</option><option value="qc">QC</option><option value="ready">Ready</option><option value="completed">Completed</option><option value="invoiced">Invoiced</option>
       </select>
       <input class="filter-input" id="job-date-from" type="date" onchange="filterJobs()" title="From date" style="width:140px">
       <input class="filter-input" id="job-date-to" type="date" onchange="filterJobs()" title="To date" style="width:140px">
@@ -1270,7 +1270,7 @@ function renderJobRows(jobs) {
       <td><div style="display:flex;gap:4px;flex-wrap:wrap">
         <button class="btn btn-secondary btn-sm" onclick="editJob('${j.id}')">Edit</button>
         <button class="btn btn-secondary btn-sm" onclick="viewJobCard('${j.id}')">🖨️ View</button>
-        ${(j.status==='completed'||j.status==='delivered')&&!inv?`<button class="btn btn-primary btn-sm" onclick="generateInvoiceFromJob('${j.id}')">Invoice</button>`:''}
+        ${j.status==='completed'&&!inv?`<button class="btn btn-primary btn-sm" onclick="generateInvoiceFromJob('${j.id}')">Invoice</button>`:''}
         ${inv?`<button class="btn btn-secondary btn-sm" onclick="viewInvoice('${inv.id}')">View Inv</button>`:''}
         ${isSuperAdmin()?`<button class="btn btn-danger btn-sm" onclick="deleteJob('${j.id}')">✕</button>`:''}
       </div></td>
@@ -1308,7 +1308,7 @@ function showNewJobModal(prefill) {
   const custOpts=`<option value="">— Select Customer —</option>`+db.customers.map(c=>`<option value="${c.id}" ${job.customerId===c.id?'selected':''}>${c.name}</option>`).join('');
   const vehOpts=`<option value="">— Select Vehicle —</option>`+db.vehicles.filter(v=>!job.customerId||v.customerId===job.customerId).map(v=>{const c=db.customers.find(x=>x.id===v.customerId)||{};return`<option value="${v.id}" data-cid="${v.customerId}" ${job.vehicleId===v.id?'selected':''}>${v.make} ${v.model} (${v.plate})</option>`;}).join('');
   const staffOpts=db.staff.map(s=>`<option value="${s.id}" ${job.staffId===s.id?'selected':''}>${s.name} — ${s.role}</option>`).join('');
-  const statusOpts=['pending','inprogress','waitingparts','qc','ready','delivered','completed'].map(s=>`<option value="${s}" ${(job.status||'pending')===s?'selected':''}>${jobStatusLabel(s)}</option>`).join('');
+  const statusOpts=['pending','inprogress','waitingparts','qc','ready','completed'].map(s=>`<option value="${s}" ${(job.status||'pending')===s?'selected':''}>${jobStatusLabel(s)}</option>`).join('');
   const svcHTML=(job.services||[{desc:'',rate:0}]).map((s,i)=>svcLineHTML(i,s)).join('');
   const prtHTML=(job.parts||[]).map((p,i)=>prtLineHTML(i,p)).join('');
 
@@ -1513,7 +1513,7 @@ async function generateInvoiceFromJob(jobId) {
 }
 
 function showNewInvoiceModal() {
-  const ready=db.jobs.filter(j=>(j.status==='completed'||j.status==='delivered')&&!db.invoices.find(i=>i.jobId===j.id));
+  const ready=db.jobs.filter(j=>j.status==='completed'&&!db.invoices.find(i=>i.jobId===j.id));
   if(!ready.length){ alert('No completed jobs without invoice. Complete a job first.'); return; }
   const opts=ready.map(j=>{ const c=db.customers.find(x=>x.id===j.customerId)||{}; const v=db.vehicles.find(x=>x.id===j.vehicleId)||{}; return`<option value="${j.id}">${j.jobNum||j.id.slice(0,8).toUpperCase()} — ${c.name} | ${v.make} ${v.model}</option>`; }).join('');
   showModal('Generate Invoice',`
