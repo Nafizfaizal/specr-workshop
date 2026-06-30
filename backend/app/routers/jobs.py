@@ -81,8 +81,11 @@ async def create_job(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    count_result = await db.execute(select(func.count()).select_from(Job))
+    job_num = f"JOB-{count_result.scalar() + 1:05d}"
+
     job_data = data.model_dump(exclude={"services", "parts"})
-    job = Job(**job_data)
+    job = Job(**job_data, job_num=job_num)
     db.add(job)
     await db.flush()
 

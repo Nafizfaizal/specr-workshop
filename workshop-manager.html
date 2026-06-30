@@ -800,7 +800,7 @@ function renderDashboard() {
           const c=db.customers.find(x=>x.id===j.customerId)||{};
           const v=db.vehicles.find(x=>x.id===j.vehicleId)||{};
           const daysOver = Math.ceil((new Date() - new Date(j.dateOut+'T00:00:00'))/(1000*60*60*24));
-          return `<tr><td class="fw-bold" style="color:var(--primary)">#${j.id.toUpperCase()}</td><td>${c.name||'—'}</td><td>${v.make||''} ${v.model||''}<br><small style="color:var(--text-muted)">${v.plate||''}</small></td><td style="color:var(--danger);font-weight:700">${fmtDate(j.dateOut)}</td><td><span class="badge badge-${j.status}">${jobStatusLabel(j.status)}</span></td><td><span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${daysOver}d</span></td></tr>`;
+          return `<tr><td class="fw-bold" style="color:var(--primary)">${j.jobNum||('#'+j.id.slice(0,8).toUpperCase())}</td><td>${c.name||'—'}</td><td>${v.make||''} ${v.model||''}<br><small style="color:var(--text-muted)">${v.plate||''}</small></td><td style="color:var(--danger);font-weight:700">${fmtDate(j.dateOut)}</td><td><span class="badge badge-${j.status}">${jobStatusLabel(j.status)}</span></td><td><span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700">${daysOver}d</span></td></tr>`;
         }).join('')}</tbody>
       </table></div>
     </div>` : '';
@@ -841,7 +841,7 @@ function renderDashboard() {
           <tbody>${db.jobs.filter(j=>!TERMINAL_STATUSES.includes(j.status)).slice(-8).reverse().map(j => {
             const c=db.customers.find(x=>x.id===j.customerId)||{};
             const over = isOverdue(j);
-            return `<tr${over?' style="background:#fff5f5"':''}><td class="fw-bold" style="color:var(--primary)">#${j.id.toUpperCase()}</td><td>${c.name||'—'}</td><td><span class="badge badge-${j.priority||'normal'}">${j.priority==='urgent'?'🔴 Urgent':'Normal'}</span></td><td><span class="badge badge-${j.status}">${jobStatusLabel(j.status)}</span></td><td style="${over?'color:var(--danger);font-weight:700':''}">${fmtDate(j.dateOut)||'—'}</td></tr>`;
+            return `<tr${over?' style="background:#fff5f5"':''}><td class="fw-bold" style="color:var(--primary)">${j.jobNum||('#'+j.id.slice(0,8).toUpperCase())}</td><td>${c.name||'—'}</td><td><span class="badge badge-${j.priority||'normal'}">${j.priority==='urgent'?'🔴 Urgent':'Normal'}</span></td><td><span class="badge badge-${j.status}">${jobStatusLabel(j.status)}</span></td><td style="${over?'color:var(--danger);font-weight:700':''}">${fmtDate(j.dateOut)||'—'}</td></tr>`;
           }).join('') || '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">No open jobs</td></tr>'}</tbody>
         </table></div>
       </div>
@@ -1259,7 +1259,7 @@ function renderJobRows(jobs) {
     const over=isOverdue(j);
     const deptColor = DEPT_COLORS[j.department] || '#888';
     return `<tr style="${over?'background:#fff5f5':j.priority==='urgent'?'background:#fffbf5':''}">
-      <td><div class="fw-bold" style="color:var(--primary)">#${j.id.toUpperCase()}</div>${j.priority==='urgent'?'<span class="badge badge-urgent" style="font-size:10px;margin-top:2px">🔴 Urgent</span>':''}</td>
+      <td><div class="fw-bold" style="color:var(--primary)">${j.jobNum||('#'+j.id.slice(0,8).toUpperCase())}</div>${j.priority==='urgent'?'<span class="badge badge-urgent" style="font-size:10px;margin-top:2px">🔴 Urgent</span>':''}</td>
       <td>${(()=>{const depts=[...new Set((j.services||[]).map(s=>s.department).filter(Boolean))];return depts.length?depts.map(d=>`<span class="badge-dept dept-${d}" style="margin:1px 2px 1px 0;display:inline-flex">${DEPT_ICONS[d]||''} ${d}</span>`).join(''):(j.department?`<span class="badge-dept dept-${j.department}">${DEPT_ICONS[j.department]||''} ${j.department}</span>`:'<span style="color:var(--text-muted);font-size:12px">—</span>');})()}</td>
       <td>${c.name||'—'}<br><small style="color:var(--text-muted)">${c.phone||''}</small></td>
       <td>${v.make||''} ${v.model||''} ${v.year||''}<br><small style="color:var(--text-muted)">${v.plate||''}</small></td>
@@ -1272,7 +1272,7 @@ function renderJobRows(jobs) {
         <button class="btn btn-secondary btn-sm" onclick="viewJobCard('${j.id}')">🖨️ View</button>
         ${(j.status==='completed'||j.status==='delivered')&&!inv?`<button class="btn btn-primary btn-sm" onclick="generateInvoiceFromJob('${j.id}')">Invoice</button>`:''}
         ${inv?`<button class="btn btn-secondary btn-sm" onclick="viewInvoice('${inv.id}')">View Inv</button>`:''}
-        <button class="btn btn-danger btn-sm" onclick="deleteJob('${j.id}')">✕</button>
+        ${isSuperAdmin()?`<button class="btn btn-danger btn-sm" onclick="deleteJob('${j.id}')">✕</button>`:''}
       </div></td>
     </tr>`;
   }).join('');
@@ -1295,7 +1295,11 @@ function filterJobs() {
   });
   document.getElementById('jobs-tbody').innerHTML=renderJobRows(filtered);
 }
-async function deleteJob(id) { if(!confirm('Delete job?')) return; await api('DELETE', '/jobs/' + id); await refreshDB(); renderJobs(); }
+async function deleteJob(id) {
+  if(!isSuperAdmin()){alert('Only Super Admin can delete jobs.');return;}
+  if(!confirm('Delete this job card? This cannot be undone.'))return;
+  try { await api('DELETE', '/jobs/' + id); await refreshDB(); renderJobs(); } catch(e) {}
+}
 
 // ─── JOB MODAL ───────────────────────────────────────────────────────────────
 function showNewJobModal(prefill) {
@@ -1511,7 +1515,7 @@ async function generateInvoiceFromJob(jobId) {
 function showNewInvoiceModal() {
   const ready=db.jobs.filter(j=>(j.status==='completed'||j.status==='delivered')&&!db.invoices.find(i=>i.jobId===j.id));
   if(!ready.length){ alert('No completed jobs without invoice. Complete a job first.'); return; }
-  const opts=ready.map(j=>{ const c=db.customers.find(x=>x.id===j.customerId)||{}; const v=db.vehicles.find(x=>x.id===j.vehicleId)||{}; return`<option value="${j.id}">${j.id.toUpperCase()} — ${c.name} | ${v.make} ${v.model}</option>`; }).join('');
+  const opts=ready.map(j=>{ const c=db.customers.find(x=>x.id===j.customerId)||{}; const v=db.vehicles.find(x=>x.id===j.vehicleId)||{}; return`<option value="${j.id}">${j.jobNum||j.id.slice(0,8).toUpperCase()} — ${c.name} | ${v.make} ${v.model}</option>`; }).join('');
   showModal('Generate Invoice',`
     <div class="form-group" style="margin-bottom:12px"><label>Completed Job</label><select id="inv-job">${opts}</select></div>
     <div class="form-row cols-2">
@@ -1630,7 +1634,7 @@ function buildJobCardHTML(jobId) {
       </div>
       <div style="text-align:right">
         <div style="font-size:26px;font-weight:900;color:#fff;letter-spacing:2px">WORK ORDER</div>
-        <div style="color:rgba(255,255,255,.85);font-size:13px;margin-top:3px">Job #${j.id.toUpperCase()}</div>
+        <div style="color:rgba(255,255,255,.85);font-size:13px;margin-top:3px">${j.jobNum||('#'+j.id.slice(0,8).toUpperCase())}</div>
       </div>
     </div>
 
@@ -1719,6 +1723,8 @@ function buildJobCardHTML(jobId) {
 }
 
 function viewJobCard(id) {
+  const _j = db.jobs.find(x=>x.id===id)||{};
+  const _jLabel = _j.jobNum || ('#'+id.slice(0,8).toUpperCase());
   const jobHtml = buildJobCardHTML(id);
   const actionBar = `
     <div class="no-print" style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
@@ -1729,7 +1735,7 @@ function viewJobCard(id) {
         Share on WhatsApp
       </button>
     </div>`;
-  showModal('Job Card — #' + id.toUpperCase(), actionBar + jobHtml, null, '', true, true);
+  showModal('Job Card — ' + _jLabel, actionBar + jobHtml, null, '', true, true);
 }
 
 function printJobCard(id) {
@@ -1744,7 +1750,7 @@ function downloadJobCardPDF(id) {
   const allLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]')).map(l=>`<link rel="stylesheet" href="${l.href}">`).join('\n');
   const fullHtml = `<!DOCTYPE html><html><head>
     <meta charset="UTF-8">
-    <title>Job Card ${id.toUpperCase()} - Spec R</title>
+    <title>Job Card ${(db.jobs.find(x=>x.id===id)||{}).jobNum||id.slice(0,8).toUpperCase()} - Spec R</title>
     ${allLinks}
     <style>${allCSS}</style>
     <style>body{margin:20px;background:#fff}@media print{body{margin:0}.no-print{display:none!important}}</style>
@@ -1769,7 +1775,7 @@ function shareJobCardWhatsApp(id) {
   const discount = jobDiscount(j);
 
   const msg =
-`🔧 *SPEC R — Work Order #${id.toUpperCase()}*
+`🔧 *SPEC R — Work Order ${_j2.jobNum||("#"+id.slice(0,8).toUpperCase())}*
 📍 ${GARAGE_ADDR}
 
 📅 Date In: ${fmtDate(j.dateIn)||'—'}
@@ -2563,7 +2569,7 @@ function showVehicleHistory(vehId) {
     return `<div style="border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:10px">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;gap:12px">
         <div>
-          <div style="font-weight:700;font-size:13px;color:var(--primary)">Job #${j.id.toUpperCase()} ${j.priority==='urgent'?'<span class="badge badge-urgent" style="font-size:10px">🔴 Urgent</span>':''}</div>
+          <div style="font-weight:700;font-size:13px;color:var(--primary)">${j.jobNum||('#'+j.id.slice(0,8).toUpperCase())} ${j.priority==='urgent'?'<span class="badge badge-urgent" style="font-size:10px">🔴 Urgent</span>':''}</div>
           <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${fmtDate(j.dateIn)}${j.dateOut?' → '+fmtDate(j.dateOut):' (open)'} · ${st.name||'Unassigned'}</div>
         </div>
         <div style="text-align:right;flex-shrink:0">
@@ -3329,7 +3335,7 @@ function renderJobDuration() {
           const closeDate = isDone ? (j.completedAt||j.dateOut||'—') : null;
           const isOpenOverdue = !isDone && j.dateOut && j.dateOut < today();
           return `<tr>
-            <td class="fw-bold" style="color:var(--primary)">#${j.id.toUpperCase()}</td>
+            <td class="fw-bold" style="color:var(--primary)">${j.jobNum||('#'+j.id.slice(0,8).toUpperCase())}</td>
             <td>${c.name||'—'}</td>
             <td style="font-size:12px">${v.make||''} ${v.model||''} ${v.plate?'· '+v.plate:''}</td>
             <td><span style="font-size:11px;background:${DEPT_COLORS[j.department]||'#64748b'}22;color:${DEPT_COLORS[j.department]||'#64748b'};padding:2px 8px;border-radius:20px;font-weight:700">${j.department||'—'}</span></td>

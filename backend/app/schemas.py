@@ -221,6 +221,7 @@ class JobUpdate(BaseModel):
 class JobResponse(JobBase):
     model_config = ConfigDict(from_attributes=True)
     id: str
+    job_num: Optional[str] = None
     completed_at: Optional[date] = None
     created_at: datetime
     updated_at: datetime

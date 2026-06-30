@@ -82,6 +82,7 @@ class Job(Base):
     __tablename__ = "jobs"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=gen_uuid)
+    job_num: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, unique=True)
     customer_id: Mapped[str] = mapped_column(String(36), ForeignKey("customers.id"), nullable=False)
     vehicle_id: Mapped[str] = mapped_column(String(36), ForeignKey("vehicles.id"), nullable=False)
     staff_id: Mapped[str] = mapped_column(String(36), ForeignKey("staff.id"), nullable=True)
