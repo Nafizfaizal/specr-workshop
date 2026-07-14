@@ -1,8 +1,13 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import text
+from .database import get_db
+from .auth import require_superadmin
+from .models import User
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -91,6 +96,24 @@ app.include_router(users.router, prefix=API_PREFIX)
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
+
+
+@app.post("/api/dev/reset-all-data")
+async def reset_all_data(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_superadmin),
+):
+    """Wipe all operational data. Keeps users table intact. Superadmin only."""
+    tables = [
+        "job_parts", "job_services", "invoice_services", "invoice_parts",
+        "invoices", "jobs", "estimate_parts", "estimate_services", "estimates",
+        "expenses", "purchase_bill_items", "purchase_bills",
+        "inventory", "fixed_costs", "vehicles", "customers", "suppliers",
+    ]
+    for table in tables:
+        await db.execute(text(f"TRUNCATE TABLE {table} RESTART IDENTITY CASCADE"))
+    await db.commit()
+    return {"deleted": tables}
 
 
 @app.get("/", response_class=HTMLResponse)
