@@ -105,8 +105,8 @@ async def reset_all_data(
 ):
     """Wipe all operational data. Keeps users table intact. Superadmin only."""
     tables = [
-        "job_parts", "job_services", "invoice_services", "invoice_parts",
-        "invoices", "jobs", "estimate_parts", "estimate_services", "estimates",
+        "job_parts", "job_services", "invoices", "jobs",
+        "estimate_parts", "estimate_services", "estimates",
         "expenses", "purchase_bill_items", "purchase_bills",
         "inventory", "fixed_costs", "vehicles", "customers", "suppliers",
     ]
